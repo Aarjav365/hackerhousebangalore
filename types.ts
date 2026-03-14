@@ -12,8 +12,6 @@ export interface RSVP {
   status: 'confirmed' | 'waitlist' | 'cancelled';
   linkedInUrl?: string;
   company?: string;
-  university?: string;
-  benefit?: string;
   timestamp: string;
 }
 

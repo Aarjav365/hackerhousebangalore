@@ -4,15 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Niko Bonatsos | Outliers</title>
-    <link rel="icon" type="image/png" href="https://i.ibb.co/67Y8BT8Y/IMG-2278.png">
-    <link rel="shortcut icon" type="image/png" href="https://i.ibb.co/67Y8BT8Y/IMG-2278.png">
-    <link rel="apple-touch-icon" href="https://i.ibb.co/67Y8BT8Y/IMG-2278.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -20,10 +18,16 @@
               sans: ['"Inter"', 'sans-serif'],
             },
             colors: {
-              paper: '#FDFCF8',
+              paper: '#F5F0E6',
               ink: '#1A1A1A',
               subtle: '#666666',
-              accent: '#333333'
+              accent: '#333333',
+              dark: {
+                paper: '#121212',
+                ink: '#F5F0E6',
+                subtle: '#A0A0A0',
+                accent: '#E0E0E0'
+              }
             }
           }
         }
@@ -31,10 +35,15 @@
     </script>
     <style>
       body {
-        background-color: #FDFCF8;
+        background-color: #F5F0E6;
         color: #1A1A1A;
         font-family: 'Crimson Pro', serif;
         -webkit-font-smoothing: antialiased;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      body.dark {
+        background-color: #121212;
+        color: #F5F0E6;
       }
       /* Custom scrollbar for minimalism */
       ::-webkit-scrollbar {
@@ -57,6 +66,15 @@
         opacity: 0;
         animation: fadeIn 0.8s ease-out forwards;
       }
+      
+      /* Hide scrollbar for horizontal gallery */
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
     </style>
   <script type="importmap">
 {
@@ -65,7 +83,8 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "framer-motion": "https://esm.sh/framer-motion@11.15.0"
+    "framer-motion": "https://esm.sh/framer-motion@11.15.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.475.0"
   }
 }
 </script>

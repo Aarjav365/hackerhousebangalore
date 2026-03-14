@@ -68,7 +68,7 @@ class DatabaseService {
 
   // --- RSVP ---
 
-  async createRSVP(userId: string, linkedInUrl: string, company: string, university?: string, benefit?: string): Promise<RSVP> {
+  async createRSVP(userId: string, linkedInUrl: string, company: string): Promise<RSVP> {
     await delay(500);
     const rsvps = this.getTable<RSVP>(DB_KEYS.RSVPS);
     
@@ -80,8 +80,6 @@ class DatabaseService {
       status: 'waitlist', // Default to waitlist for exclusivity
       linkedInUrl,
       company,
-      university,
-      benefit,
       timestamp: new Date().toISOString()
     };
 

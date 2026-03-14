@@ -1,23 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, RSVP, Question } from './types';
-import { db } from './services/db';
-import { refineQuestion } from './services/geminiService';
-import { submitToGoogleSheetsForm } from './services/googleAppsScriptService';
-import { Input, Button, FadeIn } from './components/UI';
+import { Button, FadeIn } from './components/UI';
+import { Moon, Sun } from 'lucide-react';
 
 // --- Sub-components ---
 
-const NikoProfile = () => {
+const QuoteHover = ({ children, title, description }: { children: React.ReactNode, title: string, description: string }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <span 
-      className="relative inline-block cursor-help group z-50"
+    <div 
+      className="relative cursor-help group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <span className="border-b-2 border-ink/10 group-hover:border-ink transition-colors duration-300">Niko Bonatsos</span>
+      <div className="transition-opacity duration-300 group-hover:opacity-80">
+        {children}
+      </div>
       
       <AnimatePresence>
         {isHovered && (
@@ -26,187 +25,52 @@ const NikoProfile = () => {
             animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
             exit={{ opacity: 0, y: 10, scale: 0.95, rotateX: 10 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6 w-72 origin-bottom"
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6 w-[280px] md:w-80 origin-bottom z-50 pointer-events-none flex flex-col items-center"
             style={{ perspective: "1000px" }}
           >
             {/* The Curved Screen Container */}
-            <div className="bg-[#0A0A0A] text-[#FDFCF8] p-6 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10">
+            <div className="bg-gradient-to-b from-[#1A1A1A] to-[#050505] text-[#FDFCF8] p-6 md:p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-white/10 w-full">
                {/* Screen curvature/glare effect */}
-               <div className="absolute top-0 left-0 right-0 h-2/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none rounded-t-[2.5rem]"></div>
+               <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none rounded-t-[2.5rem]"></div>
                
                <div className="relative z-10 flex flex-col items-center text-center">
-                 <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mb-4 overflow-hidden">
-                   <img 
-                     src="https://i.ibb.co/pBPG6nft/Tech-Crunch-Disrupt-Haje-Kamps-738.webp" 
-                     alt="Niko Bonatsos" 
-                     className="w-full h-full object-cover rounded-full"
-                   />
-                 </div>
                  <div className="mb-3">
-                   <h4 className="font-serif text-xl italic text-white">VC Luminary</h4>
+                   <h4 className="font-serif text-2xl md:text-3xl italic text-white drop-shadow-md">{title}</h4>
                  </div>
-                 <p className="font-serif text-sm text-gray-400 leading-relaxed mb-4 italic">
-                   "Investing in the awkward teenage years of companies."
+                 <p className="font-serif text-base md:text-lg text-gray-300 leading-relaxed italic">
+                   {description}
                  </p>
-                 <div className="space-y-1 w-full pt-3 border-t border-white/10">
-                    <p className="font-sans text-[9px] uppercase tracking-widest text-white/60">General Catalyst</p>
-                    <p className="font-sans text-[9px] uppercase tracking-widest text-white/40">Snap • Stripe • Discord</p>
-                 </div>
                </div>
             </div>
             
             {/* Connector */}
-            <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-[#0A0A0A] rotate-45 border-r border-b border-white/10"></div>
+            <div className="absolute left-1/2 -translate-x-1/2 -bottom-2.5 w-5 h-5 bg-[#050505] rotate-45 border-r border-b border-white/20 shadow-xl"></div>
           </motion.div>
         )}
       </AnimatePresence>
-    </span>
+    </div>
   );
 };
 
 export default function App() {
-  // State
-  const [user, setUser] = useState<User | null>(null);
-  const [rsvp, setRsvp] = useState<RSVP | null>(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Auth Form State
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  
-  // RSVP Form State
-  const [company, setCompany] = useState('');
-  const [linkedin, setLinkedin] = useState('');
-  const [university, setUniversity] = useState('');
-  const [benefit, setBenefit] = useState('');
-  
-  // Question State
-  const [questionInput, setQuestionInput] = useState('');
-  const [refinedQ, setRefinedQ] = useState('');
-  const [isRefining, setIsRefining] = useState(false);
-  const [myQuestions, setMyQuestions] = useState<Question[]>([]);
-  const [view, setView] = useState<'landing' | 'rsvp' | 'dashboard'>('landing');
-
   // Modal State
   const [showReferModal, setShowReferModal] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [hoveredQuote, setHoveredQuote] = useState<number | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Initialization
   useEffect(() => {
-    const init = async () => {
-      try {
-        const currentUser = await db.getCurrentUser();
-        setUser(currentUser);
-        if (currentUser) {
-          const userRsvp = await db.getRSVP(currentUser.id);
-          setRsvp(userRsvp);
-          if (userRsvp) {
-            setView('dashboard');
-            const qs = await db.getUserQuestions(currentUser.id);
-            setMyQuestions(qs);
-          } else {
-            setView('rsvp');
-          }
-        }
-      } catch (e) {
-        console.error("Init failed", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
-
-  // Handlers
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !email) return;
-    setLoading(true);
-    try {
-      const u = await db.createUser(name, email);
-      setUser(u);
-      const existingRsvp = await db.getRSVP(u.id);
-      if (existingRsvp) {
-        setRsvp(existingRsvp);
-        setView('dashboard');
-      } else {
-        setView('rsvp');
-      }
-    } finally {
-      setLoading(false);
+    if (isDarkMode) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
     }
-  };
-
-  const handleRSVP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !company || !linkedin || !university || !benefit) return;
-    setLoading(true);
-    try {
-      const newRsvp = await db.createRSVP(user.id, linkedin, company, university, benefit);
-      setRsvp(newRsvp);
-      
-      // Submit to Google Sheets via Apps Script
-      const sheetData = {
-        name: user.name,
-        email: user.email,
-        company,
-        linkedin,
-        university,
-        benefit
-      };
-      
-      const result = await submitToGoogleSheetsForm(sheetData);
-      if (result.success) {
-        console.log('✅ Successfully submitted to Google Sheets');
-      } else {
-        console.log('⚠️ Google Sheets submission failed:', result.error);
-        console.log('📝 Data saved to localStorage as fallback');
-      }
-      
-      setView('dashboard');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAiRefine = async () => {
-    if (!questionInput) return;
-    setIsRefining(true);
-    try {
-      const betterVersion = await refineQuestion(questionInput);
-      setRefinedQ(betterVersion);
-    } finally {
-      setIsRefining(false);
-    }
-  };
-
-  const handleSubmitQuestion = async () => {
-    if (!user || (!questionInput && !refinedQ)) return;
-    const finalQ = refinedQ || questionInput;
-    setLoading(true);
-    try {
-      await db.submitQuestion(user.id, questionInput, finalQ);
-      const qs = await db.getUserQuestions(user.id);
-      setMyQuestions(qs);
-      setQuestionInput('');
-      setRefinedQ('');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    await db.logout();
-    setUser(null);
-    setRsvp(null);
-    setView('landing');
-    setName('');
-    setEmail('');
-  };
+  }, [isDarkMode]);
 
   const handleShare = async () => {
     const shareData = {
-      title: 'Outliers by TheAsterix',
-      text: 'I see incredible potential in you. You\'re exactly the kind of outlier who belongs in this community. You should definitely apply.',
+      title: 'Niko Bonatsos | Outliers',
+      text: 'I saw this Outliers event with Niko Bonatsos and thought of you. The world needs what you are building.',
       url: window.location.href
     };
 
@@ -233,7 +97,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-paper/90 backdrop-blur-sm"
+            className="absolute inset-0 bg-paper/90 dark:bg-dark-paper/90 backdrop-blur-sm"
             onClick={() => setShowReferModal(false)}
           />
           <motion.div 
@@ -241,7 +105,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", duration: 0.6 }}
-            className="relative bg-[#FDFCF8] w-full max-w-sm shadow-2xl p-6 md:p-8 border border-gray-200 text-center"
+            className="relative bg-[#FDFCF8] dark:bg-[#1A1A1A] w-full max-w-sm shadow-2xl p-6 md:p-8 border border-gray-200 dark:border-gray-800 text-center"
             style={{ 
               aspectRatio: '3.5/5',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)'
@@ -249,27 +113,27 @@ export default function App() {
           >
             <button 
               onClick={() => setShowReferModal(false)}
-              className="absolute top-4 right-4 text-subtle hover:text-ink transition-colors"
+              className="absolute top-4 right-4 text-subtle dark:text-dark-subtle hover:text-ink dark:hover:text-dark-ink transition-colors"
             >
               ✕
             </button>
             
             {/* Postcard Inner Border */}
-            <div className="h-full flex flex-col justify-between items-center border-2 border-double border-gray-100 p-6">
+            <div className="h-full flex flex-col justify-between items-center border-2 border-double border-gray-100 dark:border-gray-800 p-6">
               
               <div className="pt-4 space-y-8">
-                <div className="w-12 h-12 bg-gray-100 rounded-full mx-auto flex items-center justify-center">
-                   <span className="font-serif italic text-xl">A*</span>
+                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full mx-auto flex items-center justify-center">
+                   <span className="font-serif italic text-xl dark:text-dark-ink">v1</span>
                 </div>
                 
-                <h2 className="font-serif text-4xl md:text-5xl text-ink leading-none">
+                <h2 className="font-serif text-4xl md:text-5xl text-ink dark:text-dark-ink leading-none">
                   You are<br/>an<br/><span className="italic">Outlier.</span>
                 </h2>
               </div>
 
               <div className="space-y-6 w-full pt-8">
-                <div className="h-px w-12 bg-gray-200 mx-auto"></div>
-                <p className="font-serif text-lg italic text-subtle/80 font-light">
+                <div className="h-px w-12 bg-gray-200 dark:bg-gray-800 mx-auto"></div>
+                <p className="font-serif text-lg italic text-subtle/80 dark:text-dark-subtle/80 font-light">
                   "I saw this and thought of you. The world needs what you are building."
                 </p>
                 <div className="pt-2">
@@ -286,9 +150,9 @@ export default function App() {
   );
 
   const renderLanding = () => (
-    <div className="max-w-xl mx-auto pt-20 px-6 pb-20">
+    <div className="w-full max-w-7xl mx-auto pt-32 px-6 pb-20">
       {/* Premium Staggered Text Reveal */}
-      <h1 className="text-5xl md:text-7xl font-serif text-ink mb-12 leading-tight">
+      <h1 className="text-5xl md:text-7xl font-serif text-ink dark:text-dark-ink mb-12 leading-tight">
         {["Built", "for"].map((word, i) => (
           <motion.span
             key={i}
@@ -324,230 +188,220 @@ export default function App() {
       <FadeIn delay={0.8}>
         
         {/* New "Who is this for" Section */}
-        <div className="mb-16 border-l-2 border-ink pl-6 py-2 flex flex-col md:flex-row gap-8 justify-between items-start group">
+        <div className="mb-16 border-l-2 border-ink dark:border-dark-ink pl-6 py-2 flex flex-col md:flex-row gap-8 justify-between items-start group">
           <div className="max-w-xs">
-            <h3 className="font-sans text-[10px] uppercase tracking-[0.2em] text-subtle mb-3">Who is this for?</h3>
-            <p className="font-serif text-lg leading-relaxed text-ink/80 italic">
-              This is not a networking event. It is a gathering for the contrarians, the visionaries, and the ones who don't fit in because they were born to stand out. 
+            <h3 className="font-sans text-[10px] uppercase tracking-[0.2em] text-subtle dark:text-dark-subtle mb-3">Who is this for?</h3>
+            <p className="font-serif text-lg leading-relaxed text-ink/80 dark:text-dark-ink/80 italic">
+              This is a hacker house for outlier engineers and high agency builders. For the contrarians and visionaries who don't fit in because they were born to stand out.
             </p>
           </div>
-          <div className="flex-none pt-2">
+          <div className="flex-none pt-2 flex flex-col gap-6 items-start md:items-end">
              <button 
                onClick={() => setShowReferModal(true)}
-               className="font-sans text-[10px] uppercase tracking-widest border-b border-ink pb-1 hover:text-subtle hover:border-subtle transition-colors"
+               className="font-sans text-[10px] uppercase tracking-widest border-b border-ink dark:border-dark-ink pb-1 hover:text-subtle dark:hover:text-dark-subtle hover:border-subtle dark:hover:border-dark-subtle transition-colors"
              >
-               Refer an Outlier →
+               Refer a Builder →
+             </button>
+             <button 
+               className="bg-ink dark:bg-dark-ink text-paper dark:text-dark-paper px-8 py-4 rounded-full font-sans text-xs uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg"
+             >
+               Apply Now
              </button>
           </div>
         </div>
 
-        <div className="h-px w-20 bg-ink mb-8"></div>
-        <p className="text-xl md:text-2xl text-ink/80 font-serif leading-relaxed mb-12">
-          An intimate evening with Verdict Capital's <NikoProfile />. 
-          We are gathering the founders who see what others don't.
+        <div className="h-px w-20 bg-ink dark:bg-dark-ink mb-8"></div>
+        <p className="text-xl md:text-2xl text-ink/80 dark:text-dark-ink/80 font-serif leading-relaxed mb-12 max-w-3xl">
+          Welcome to Hackerhouse v1. 
+          We are gathering the builders who see what others don't. 3 days of intense building, surrounded by the best.
         </p>
 
-        <div className="space-y-2 mb-16 text-sm font-sans tracking-widest text-subtle">
-          <p>Details shared to selected only </p>
-          <p>Online , India</p>
+        <div className="space-y-2 mb-16 text-sm font-sans tracking-widest text-subtle dark:text-dark-subtle">
+          <p>Location: Bangalore</p>
+          <p>Batch: Summer 2026</p>
         </div>
 
-        <div className="bg-white/50 backdrop-blur-sm p-8 border border-gray-100 rounded-sm">
-          <h3 className="font-sans text-xs uppercase tracking-widest mb-6">Request Invitation</h3>
-          <form onSubmit={handleLogin}>
-            <Input 
-              label="Full Name" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              placeholder="e.g. Jane Doe"
-            />
-            <Input 
-              label="Email Address" 
-              type="email"
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              placeholder="jane@example.com"
-            />
-            <div className="mt-8">
-              <Button type="submit" loading={loading}>Continue</Button>
+        {/* Photo Gallery */}
+        <div className="mb-20 -mx-6 md:-mx-12 lg:-mx-24 overflow-hidden pb-8 relative">
+          {/* Gradient masks for smooth fade on edges */}
+          <div className="absolute inset-y-0 left-0 w-12 md:w-24 bg-gradient-to-r from-paper dark:from-dark-paper to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute inset-y-0 right-0 w-12 md:w-24 bg-gradient-to-l from-paper dark:from-dark-paper to-transparent z-10 pointer-events-none"></div>
+          
+          <motion.div 
+            className="flex w-max"
+            animate={{ x: ["0%", "-50%"] }}
+            transition={{ ease: "linear", duration: 25, repeat: Infinity }}
+          >
+            {[
+              "https://i.ibb.co/pSyzDsn/IMG-2784.jpg",
+              "https://i.ibb.co/cKf0g6jf/DSC01529.jpg",
+              "https://i.ibb.co/5hS72RmR/DSC01513.jpg",
+              "https://i.ibb.co/4RPmJdWm/DSC01530-1.jpg",
+              "https://i.ibb.co/JRPnrBWV/DSC01525.jpg",
+              "https://i.ibb.co/pSyzDsn/IMG-2784.jpg",
+              "https://i.ibb.co/cKf0g6jf/DSC01529.jpg",
+              "https://i.ibb.co/5hS72RmR/DSC01513.jpg",
+              "https://i.ibb.co/4RPmJdWm/DSC01530-1.jpg",
+              "https://i.ibb.co/JRPnrBWV/DSC01525.jpg"
+            ].map((src, i) => (
+              <div 
+                key={i}
+                className="w-44 md:w-56 h-44 md:h-56 flex-shrink-0 rounded-2xl overflow-hidden shadow-md mx-2 md:mx-3"
+              >
+                <img 
+                  src={src} 
+                  alt={`Hackerhouse gallery ${i + 1}`} 
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-out"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ))}
+          </motion.div>
+        </div>
+
+        <div 
+          className="mt-20 mb-16 relative"
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setMousePos({ 
+              x: e.clientX - rect.left, 
+              y: e.clientY - rect.top 
+            });
+          }}
+          onMouseLeave={() => setHoveredQuote(null)}
+        >
+          <h3 className="font-sans text-xs uppercase tracking-widest mb-10 border-b border-gray-200 dark:border-gray-800 pb-4">In Builders' Words</h3>
+          
+          <div className="flex flex-col gap-12 items-start">
+            <div className="w-full max-w-4xl space-y-12 md:space-y-16">
+              {/* Paragraph 1 */}
+              <div 
+                onMouseEnter={() => setHoveredQuote(0)}
+                className="cursor-default"
+              >
+                <p className={`font-serif text-2xl md:text-3xl lg:text-4xl leading-relaxed md:leading-normal transition-colors duration-500 ${hoveredQuote === 0 || hoveredQuote === null ? 'text-ink dark:text-dark-ink' : 'text-ink/20 dark:text-dark-ink/20'}`}>
+                  <span className="border-b border-ink/30 dark:border-dark-ink/30 pb-0.5">This hacker house compresses weeks of deep engineering into a single weekend.</span>
+                  <img src="https://i.ibb.co/gMjYDy3M/003.jpg" className="inline-block w-10 h-10 md:w-12 md:h-12 rounded-full mx-3 align-middle object-cover shadow-sm" alt="avatar" />
+                  <span className="border-b border-ink/30 dark:border-dark-ink/30 pb-0.5">The urgency inside the villa is so infectious that those 48 hours become the most productive coding sprint of your life.</span>
+                </p>
+              </div>
+
+              {/* Paragraph 2 */}
+              <div 
+                onMouseEnter={() => setHoveredQuote(1)}
+                className="cursor-default"
+              >
+                <p className={`font-serif text-2xl md:text-3xl lg:text-4xl leading-relaxed md:leading-normal transition-colors duration-500 ${hoveredQuote === 1 || hoveredQuote === null ? 'text-ink dark:text-dark-ink' : 'text-ink/20 dark:text-dark-ink/20'}`}>
+                  <span className="border-b border-ink/30 dark:border-dark-ink/30 pb-0.5">It’s a density of engineering talent you can’t find anywhere else in india.</span>
+                  <img src="https://i.ibb.co/rfX88szD/002.jpg" className="inline-block w-10 h-10 md:w-12 md:h-12 rounded-full mx-3 align-middle object-cover shadow-sm" alt="avatar" />
+                  <span className="border-b border-ink/30 dark:border-dark-ink/30 pb-0.5">It feels like having the industry's heavyweights entirely at your back—from Partners to batchmates.</span>
+                </p>
+              </div>
+
+              {/* Paragraph 3 */}
+              <div 
+                onMouseEnter={() => setHoveredQuote(2)}
+                className="cursor-default"
+              >
+                <p className={`font-serif text-2xl md:text-3xl lg:text-4xl leading-relaxed md:leading-normal transition-colors duration-500 ${hoveredQuote === 2 || hoveredQuote === null ? 'text-ink dark:text-dark-ink' : 'text-ink/20 dark:text-dark-ink/20'}`}>
+                  <span className="border-b border-ink/30 dark:border-dark-ink/30 pb-0.5">Being locked in a room with the top 1% of the city's coders completely resets your baseline.</span>
+                  <img src="https://i.ibb.co/sJ6wW7nM/001.jpg" className="inline-block w-10 h-10 md:w-12 md:h-12 rounded-full mx-3 align-middle object-cover shadow-sm" alt="avatar" />
+                  <span className="border-b border-ink/30 dark:border-dark-ink/30 pb-0.5">You leave the house with a completely new definition of what it means to ship production-grade software fast.</span>
+                </p>
+              </div>
             </div>
-          </form>
+
+            {/* Floating Image */}
+            <AnimatePresence>
+              {hoveredQuote !== null && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+                  animate={{ 
+                    opacity: 1, 
+                    scale: 1, 
+                    rotate: 0,
+                    x: mousePos.x + 20, 
+                    y: mousePos.y - 150
+                  }}
+                  exit={{ opacity: 0, scale: 0.5, rotate: 10 }}
+                  transition={{ type: "spring", stiffness: 250, damping: 20, mass: 0.5 }}
+                  className="absolute top-0 left-0 w-48 h-64 md:w-64 md:h-80 pointer-events-none z-50 hidden md:block"
+                >
+                  <img
+                    src={
+                      hoveredQuote === 0 ? "https://i.ibb.co/gMjYDy3M/003.jpg" :
+                      hoveredQuote === 1 ? "https://i.ibb.co/rfX88szD/002.jpg" :
+                      "https://i.ibb.co/sJ6wW7nM/001.jpg"
+                    }
+                    className="w-full h-full object-cover rounded-[2rem] shadow-2xl border-4 border-paper dark:border-dark-paper"
+                    alt="Builder"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        <div className="mt-20 mb-16">
+          <h3 className="font-sans text-xs uppercase tracking-widest mb-10 border-b border-gray-200 dark:border-gray-800 pb-4">Be in the room with</h3>
+          <div className="flex flex-wrap gap-3">
+            {[
+              'General Catalyst', 
+              'OpenAI', 
+              'Stripe', 
+              'Figma', 
+              'Vercel', 
+              'Supabase', 
+              'Outlier Founders', 
+              '10x Engineers'
+            ].map((name, i) => (
+              <span 
+                key={i} 
+                className="px-4 py-2 rounded-full border border-gray-200 dark:border-gray-800 text-sm font-sans text-subtle dark:text-dark-subtle hover:border-ink dark:hover:border-dark-ink hover:text-ink dark:hover:text-dark-ink transition-colors cursor-default"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
         </div>
       </FadeIn>
     </div>
   );
-
-  const renderRSVP = () => (
-    <div className="max-w-xl mx-auto pt-20 px-6">
-      <FadeIn delay={0.15}>
-        <h2 className="text-4xl font-serif mb-6">Request Access</h2>
-        <p className="font-serif text-lg text-subtle mb-10">
-          Welcome, {user?.name.split(' ')[0]}. This event is curated for outliers.
-        </p>
-        
-        <form onSubmit={handleRSVP}>
-          <Input 
-            label="Current Company / Project" 
-            value={company} 
-            onChange={(e) => setCompany(e.target.value)} 
-            placeholder="What are you building?"
-          />
-          <Input 
-            label="LinkedIn URL" 
-            value={linkedin} 
-            onChange={(e) => setLinkedin(e.target.value)} 
-            placeholder="linkedin.com/in/..."
-          />
-          <Input 
-            label="University" 
-            value={university} 
-            onChange={(e) => setUniversity(e.target.value)} 
-            placeholder="Where did you attend university?"
-          />
-          <Input 
-            label="How will you benefit from this event?" 
-            value={benefit} 
-            onChange={(e) => setBenefit(e.target.value)} 
-            placeholder="What do you hope to gain from attending?"
-          />
-          <div className="mt-10 flex gap-4">
-            <Button type="submit" loading={loading}>Join Waitlist</Button>
-            <Button type="button" variant="secondary" onClick={handleSignOut}>Cancel</Button>
-          </div>
-        </form>
-      </FadeIn>
-    </div>
-  );
-
-  const renderDashboard = () => (
-    <div className="max-w-2xl mx-auto pt-20 px-6 pb-20">
-      <FadeIn delay={0.15}>
-        <div className="flex justify-between items-end mb-12 border-b border-gray-200 pb-6">
-          <div>
-            <h1 className="text-3xl font-serif">You are on the waitlist.</h1>
-            <p className="text-subtle mt-2 font-serif">
-              We have received your application, {user?.name}. We will notify you via email if you are in
-            </p>
-          </div>
-          <button onClick={handleSignOut} className="text-xs uppercase tracking-widest text-subtle hover:text-ink underline decoration-1 underline-offset-4">
-            Sign Out
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest text-subtle">Date</p>
-            <p className="font-serif text-lg">To selected only</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest text-subtle">Time</p>
-            <p className="font-serif text-lg">To selected only</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest text-subtle">Location</p>
-            <p className="font-serif text-lg">Online, India</p>
-          </div>
-        </div>
-
-        {/* AI Question Section */}
-        <div className="bg-white p-8 border border-gray-100 shadow-sm rounded-sm">
-          <h3 className="text-2xl font-serif mb-2">Ask a Question</h3>
-          <p className="text-subtle font-serif mb-6 leading-relaxed">
-            Niko prioritizes questions from the audience. Use our AI assistant to help draft a meaningful question that stands out.
-          </p>
-
-          <div className="mb-6">
-            <textarea
-              value={questionInput}
-              onChange={(e) => {
-                setQuestionInput(e.target.value);
-                setRefinedQ(''); // Clear refined if user edits
-              }}
-              placeholder="Draft your thoughts here... (e.g. 'I want to ask about how consumer social is changing with AI')"
-              className="w-full bg-[#FAFAF5] p-4 text-lg font-serif border-0 focus:ring-1 focus:ring-gray-200 resize-none h-32 placeholder-gray-400"
-            />
-          </div>
-
-          {refinedQ && (
-            <div className="mb-6 bg-gray-50 p-6 border-l-2 border-ink">
-              <p className="text-[10px] uppercase tracking-widest text-subtle mb-2">AI Suggested Refinement</p>
-              <p className="text-xl font-serif italic text-ink">{refinedQ}</p>
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <Button onClick={handleSubmitQuestion} disabled={loading || (!questionInput && !refinedQ)}>
-              Submit Question
-            </Button>
-          </div>
-        </div>
-
-        {/* Existing Questions */}
-        {myQuestions.length > 0 && (
-          <div className="mt-16">
-            <h4 className="text-xs uppercase tracking-widest text-subtle mb-6">Your Submitted Questions</h4>
-            <div className="space-y-6">
-              {myQuestions.map((q) => (
-                <div key={q.id} className="border-b border-gray-100 pb-4">
-                  <p className="font-serif text-lg text-ink">{q.refinedText || q.originalText}</p>
-                  <p className="text-[10px] text-gray-400 mt-2">
-                    {new Date(q.timestamp).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-      </FadeIn>
-    </div>
-  );
-
-  if (loading && !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-paper">
-        <div className="w-12 h-0.5 bg-gray-200 overflow-hidden">
-          <div className="h-full bg-ink animate-[loading_1s_ease-in-out_infinite]"></div>
-        </div>
-        <style>{`
-          @keyframes loading {
-            0% { width: 0%; margin-left: 0; }
-            50% { width: 100%; margin-left: 0; }
-            100% { width: 0%; margin-left: 100%; }
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-paper text-ink selection:bg-gray-200">
+    <div className="min-h-screen bg-paper dark:bg-dark-paper text-ink dark:text-dark-ink selection:bg-gray-200 dark:selection:bg-gray-800 transition-colors duration-300">
       {/* Navigation */}
       <nav 
-        className="fixed top-0 left-0 right-0 p-6 z-50 flex justify-between items-center mix-blend-multiply animate-fade-in"
+        className="fixed top-0 left-0 right-0 p-6 z-50 flex justify-center mix-blend-multiply dark:mix-blend-normal animate-fade-in"
         style={{ animationDelay: '0s' }}
       >
-        <span className="font-serif text-xl italic font-semibold tracking-tight">theasterix</span>
-        {user && view !== 'landing' && (
-          <div className="w-2 h-2 rounded-full bg-green-500" title="Online"></div>
-        )}
+        <div className="w-full max-w-7xl flex justify-between items-center">
+          <span className="font-serif text-xl italic font-semibold tracking-tight">Hackerhouse v1</span>
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            aria-label="Toggle dark mode"
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+        </div>
       </nav>
 
       {/* Main Content Area */}
       <main className="relative z-10">
         {renderReferModal()}
-        {view === 'landing' && renderLanding()}
-        {view === 'rsvp' && renderRSVP()}
-        {view === 'dashboard' && renderDashboard()}
+        {renderLanding()}
       </main>
 
       {/* Footer */}
       <footer 
-        className="fixed bottom-6 left-6 right-6 flex justify-between text-[10px] uppercase tracking-widest text-gray-400 pointer-events-none z-0 animate-fade-in"
+        className="fixed bottom-6 left-0 right-0 flex justify-center pointer-events-none z-0 animate-fade-in"
         style={{ animationDelay: '0.3s' }}
       >
-        <span>© 2026</span>
-        <span>TheAsterix</span>
+        <div className="w-full max-w-7xl px-6 flex justify-between text-[10px] uppercase tracking-widest text-gray-400">
+          <span>© 2026</span>
+          <span>Hackerhouse v1</span>
+        </div>
       </footer>
     </div>
   );
