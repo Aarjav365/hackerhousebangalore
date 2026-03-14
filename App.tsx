@@ -150,7 +150,7 @@ export default function App() {
   );
 
   const renderLanding = () => (
-    <div className="w-full max-w-7xl mx-auto pt-32 px-6 pb-20">
+    <div className="max-w-xl mx-auto pt-20 px-6 pb-20">
       {/* Premium Staggered Text Reveal */}
       <h1 className="text-5xl md:text-7xl font-serif text-ink dark:text-dark-ink mb-12 leading-tight">
         {["Built", "for"].map((word, i) => (
@@ -211,7 +211,7 @@ export default function App() {
         </div>
 
         <div className="h-px w-20 bg-ink dark:bg-dark-ink mb-8"></div>
-        <p className="text-xl md:text-2xl text-ink/80 dark:text-dark-ink/80 font-serif leading-relaxed mb-12 max-w-3xl">
+        <p className="text-xl md:text-2xl text-ink/80 dark:text-dark-ink/80 font-serif leading-relaxed mb-12">
           Welcome to Hackerhouse v1. 
           We are gathering the builders who see what others don't. 3 days of intense building, surrounded by the best.
         </p>
@@ -273,7 +273,7 @@ export default function App() {
           <h3 className="font-sans text-xs uppercase tracking-widest mb-10 border-b border-gray-200 dark:border-gray-800 pb-4">In Builders' Words</h3>
           
           <div className="flex flex-col gap-12 items-start">
-            <div className="w-full max-w-4xl space-y-12 md:space-y-16">
+            <div className="w-full space-y-12 md:space-y-16">
               {/* Paragraph 1 */}
               <div 
                 onMouseEnter={() => setHoveredQuote(0)}
@@ -372,19 +372,17 @@ export default function App() {
     <div className="min-h-screen bg-paper dark:bg-dark-paper text-ink dark:text-dark-ink selection:bg-gray-200 dark:selection:bg-gray-800 transition-colors duration-300">
       {/* Navigation */}
       <nav 
-        className="fixed top-0 left-0 right-0 p-6 z-50 flex justify-center mix-blend-multiply dark:mix-blend-normal animate-fade-in"
+        className="fixed top-0 left-0 right-0 p-6 z-50 flex justify-between items-center mix-blend-multiply dark:mix-blend-normal animate-fade-in"
         style={{ animationDelay: '0s' }}
       >
-        <div className="w-full max-w-7xl flex justify-between items-center">
-          <span className="font-serif text-xl italic font-semibold tracking-tight">Hackerhouse v1</span>
-          <button 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-            aria-label="Toggle dark mode"
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-        </div>
+        <span className="font-serif text-xl italic font-semibold tracking-tight">Hackerhouse v1</span>
+        <button 
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          aria-label="Toggle dark mode"
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
       </nav>
 
       {/* Main Content Area */}
@@ -395,13 +393,11 @@ export default function App() {
 
       {/* Footer */}
       <footer 
-        className="fixed bottom-6 left-0 right-0 flex justify-center pointer-events-none z-0 animate-fade-in"
+        className="fixed bottom-6 left-6 right-6 flex justify-between text-[10px] uppercase tracking-widest text-gray-400 pointer-events-none z-0 animate-fade-in"
         style={{ animationDelay: '0.3s' }}
       >
-        <div className="w-full max-w-7xl px-6 flex justify-between text-[10px] uppercase tracking-widest text-gray-400">
-          <span>© 2026</span>
-          <span>Hackerhouse v1</span>
-        </div>
+        <span>© 2026</span>
+        <span>Hackerhouse v1</span>
       </footer>
     </div>
   );
