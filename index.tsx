@@ -2,13 +2,18 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import DanceStudio from './DanceStudio';
+import Team from './Team';
+import Apply from './Apply';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-const isDanceStudio = window.location.pathname.replace(/\/+$/, '') === '/dance-studio';
+const path = window.location.pathname.replace(/\/+$/, '');
+const isDanceStudio = path === '/dance-studio';
+const isTeam = path === '/team';
+const isApply = path === '/apply';
 
 if (isDanceStudio) {
   document.body.style.backgroundColor = '#ffffff';
@@ -19,6 +24,6 @@ if (isDanceStudio) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    {isDanceStudio ? <DanceStudio /> : <App />}
+    {isDanceStudio ? <DanceStudio /> : isTeam ? <Team /> : isApply ? <Apply /> : <App />}
   </React.StrictMode>
 );
